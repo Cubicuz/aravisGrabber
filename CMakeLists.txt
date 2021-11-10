@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.0.0)
+cmake_minimum_required(VERSION 3.18.0)
 project(aravisgrabber VERSION 0.1.0)
 
 include(CTest)
@@ -8,6 +8,8 @@ include_directories(SYSTEM /usr/include/glib-2.0)
 include_directories(SYSTEM /usr/lib/glib-2.0/include)
 
 add_executable(aravisgrabber main.cpp)
+
+add_subdirectory(src)
 
 set_property(TARGET aravisgrabber PROPERTY CXX_STANDARD 20)
 #target_include_directories(aravisgrabber PRIVATE /usr/local/include/aravis-0.8)
@@ -24,3 +26,4 @@ set_target_properties(aravis-8.0 PROPERTIES
 #set(FOO_SRCS "foo.cpp")
 #add_executable(foo ${FOO_SRCS})
 target_link_libraries(aravisgrabber aravis-8.0)
+target_link_libraries(aravisgrabber glib-2.0)
