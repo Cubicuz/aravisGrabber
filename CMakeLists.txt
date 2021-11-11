@@ -27,3 +27,4 @@ set_target_properties(aravis-8.0 PROPERTIES
 #add_executable(foo ${FOO_SRCS})
 target_link_libraries(aravisgrabber aravis-8.0)
 target_link_libraries(aravisgrabber glib-2.0)
+target_link_libraries(aravisgrabber gobject-2.0)
