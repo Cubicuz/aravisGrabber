@@ -1,6 +1,8 @@
 #include <arv.h>
 #include <iostream>
 #include <memory>
+#include <opencv2/opencv.hpp>
+#include <opencv4/opencv2/imgproc.hpp>
 
 struct GLibDeleter {
     void operator()(const char** p) const 
@@ -46,7 +48,7 @@ int main(int, char **) {
     }
     g_free(formats);
     g_free(formatIds);
-    arv_camera_set_pixel_format(camera, ARV_PIXEL_FORMAT_BAYER_RG_12, &error);
+    arv_camera_set_pixel_format(camera, ARV_PIXEL_FORMAT_BAYER_RG_8, &error);
     if (handleerror(error)){
         return 1;
     }
@@ -62,12 +64,66 @@ int main(int, char **) {
             return 1;
         }
     }
+
+    arv_camera_set_region(camera, 0, 0, 1000, 500, &error);
+    if (handleerror(error)){
+        std::cout << "invalid region" << std::endl;
+        return 1;
+    }
+
+    arv_camera_set_exposure_time(camera, 100000.0, &error);
+    if (handleerror(error)){
+        std::cout << "invalid exposure" << std::endl;
+        return 1;
+    }
+   
+
     ArvStream* stream = nullptr;
     stream = arv_camera_create_stream(camera, [](void *user_data,
                       ArvStreamCallbackType type,
                       ArvBuffer *buffer){}, nullptr, &error);
     
+    guint buffersize = arv_camera_get_payload(camera, &error);
 
+    ArvBuffer* buffer = arv_buffer_new_allocate(buffersize);
+    std::cout << "allocated buffer at address " << buffer << std::endl;
+
+    arv_stream_push_buffer(stream, buffer);
+
+    arv_camera_start_acquisition(camera, &error);
+    if (handleerror(error)){
+        return 1;
+    }
+
+    ArvBuffer* popedBuffer = arv_stream_pop_buffer(stream);
+    std::cout << "received buffer at address " << popedBuffer << std::endl;
+
+    arv_camera_stop_acquisition(camera, &error);
+    if (handleerror(error)){
+        return 1;
+    }
+
+    gint x(0), y(0), height(0), width(0);
+    arv_buffer_get_image_region(popedBuffer, &x, &y, &height, &width);
+    if (handleerror(error)){
+        return 1;
+    }
+
+
+    cv::Mat imageRaw ((int) height,(int) width, CV_8UC1);
+    size_t imageSize = 0;
+    auto rawPtr = arv_buffer_get_data(popedBuffer, &imageSize);
+    memcpy(imageRaw.data, rawPtr, imageSize);
+    std::cout << "copied " << imageSize << " bytes" << std::endl;
+
+    cv::Mat rgb8BitMat(height, width, CV_8UC3);
+    cv::cvtColor(imageRaw, rgb8BitMat, cv::COLOR_BayerRG2BGR);
+
+
+    cv::namedWindow("Display Image", cv::WINDOW_AUTOSIZE );
+    cv::imshow("Display Image", rgb8BitMat);
+
+    cv::waitKey();
 
     if (stream){
         g_object_unref(stream);

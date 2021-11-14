@@ -28,3 +28,7 @@ set_target_properties(aravis-8.0 PROPERTIES
 target_link_libraries(aravisgrabber aravis-8.0)
 target_link_libraries(aravisgrabber glib-2.0)
 target_link_libraries(aravisgrabber gobject-2.0)
+
+find_package( OpenCV REQUIRED )
+include_directories(SYSTEM ${OpenCV_INCLUDE_DIRS} )
+target_link_libraries(aravisgrabber ${OpenCV_LIBS} )
