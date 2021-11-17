@@ -61,21 +61,30 @@ int main(int, char **) {
         std::cout << "framerate between " << min << " and " << max << std::endl;
         arv_camera_set_frame_rate(camera, 1.0, &error);
         if (handleerror(error)){
-            return 1;
+            std::cout << "could not set framerate" << std::endl;
         }
     }
 
-    arv_camera_set_region(camera, 0, 0, 1000, 500, &error);
+    arv_camera_set_region(camera, 0, 0, 1600, 1200, &error);
     if (handleerror(error)){
         std::cout << "invalid region" << std::endl;
         return 1;
     }
 
-    arv_camera_set_exposure_time(camera, 100000.0, &error);
-    if (handleerror(error)){
-        std::cout << "invalid exposure" << std::endl;
-        return 1;
+    {
+        double min, max;
+        arv_camera_get_exposure_time_bounds(camera, &min, &max, &error);
+        if (handleerror(error)){
+            std::cout << "cant read exposure bounds!" << std::endl;
+            return -1;
+        }
+        arv_camera_set_exposure_time(camera, max, &error);
+        if (handleerror(error)){
+            std::cout << "invalid exposure" << std::endl;
+            return 1;
+        }
     }
+
    
 
     ArvStream* stream = nullptr;
@@ -104,10 +113,12 @@ int main(int, char **) {
     }
 
     gint x(0), y(0), height(0), width(0);
-    arv_buffer_get_image_region(popedBuffer, &x, &y, &height, &width);
+    arv_buffer_get_image_region(popedBuffer, &x, &y, &width, &height);
     if (handleerror(error)){
         return 1;
     }
+    std::cout << "heigh: " << height << " width: " << width << std::endl;
+    std::cout << "y: " << y << " x: " << x << std::endl;
 
 
     cv::Mat imageRaw ((int) height,(int) width, CV_8UC1);
@@ -122,6 +133,8 @@ int main(int, char **) {
 
     cv::namedWindow("Display Image", cv::WINDOW_AUTOSIZE );
     cv::imshow("Display Image", rgb8BitMat);
+
+    cv::imwrite("/home/m/Pictures/grabber/test.tiff", imageRaw);
 
     cv::waitKey();
 
