@@ -33,6 +33,12 @@ int main(int, char **) {
     if (handleerror(error)){
         return 1;
     }
+
+    ArvStream* stream = nullptr;
+    stream = arv_camera_create_stream(camera, [](void *user_data,
+                      ArvStreamCallbackType type,
+                      ArvBuffer *buffer){}, nullptr, &error);
+
     guint n_pixel_formats = 0;
     auto formats = arv_camera_dup_available_pixel_formats_as_display_names(camera, &n_pixel_formats, &error);
     if (handleerror(error)){
@@ -87,30 +93,38 @@ int main(int, char **) {
 
    
 
-    ArvStream* stream = nullptr;
-    stream = arv_camera_create_stream(camera, [](void *user_data,
-                      ArvStreamCallbackType type,
-                      ArvBuffer *buffer){}, nullptr, &error);
     
-    guint buffersize = arv_camera_get_payload(camera, &error);
+    size_t buffersize = arv_camera_get_payload(camera, &error);
+    std::cout << "buffersize " <<  buffersize << std::endl;
 
-    ArvBuffer* buffer = arv_buffer_new_allocate(buffersize);
-    std::cout << "allocated buffer at address " << buffer << std::endl;
-
-    arv_stream_push_buffer(stream, buffer);
+    for(int i=0;i<10;i++){
+        arv_stream_push_buffer(stream, arv_buffer_new(buffersize, nullptr));
+    }
 
     arv_camera_start_acquisition(camera, &error);
     if (handleerror(error)){
         return 1;
     }
 
-    ArvBuffer* popedBuffer = arv_stream_pop_buffer(stream);
+    ArvBuffer* popedBuffer;
+    ArvBufferStatus status;
+    do {
+        popedBuffer = arv_stream_pop_buffer(stream);
+        status = arv_buffer_get_status(popedBuffer);
+        if (status != ARV_BUFFER_STATUS_SUCCESS){
+            arv_stream_push_buffer(stream, popedBuffer);
+            std::cout << status;
+        }
+    } while (status != ARV_BUFFER_STATUS_SUCCESS);
+
+    std::cout << std::endl;
     std::cout << "received buffer at address " << popedBuffer << std::endl;
 
     arv_camera_stop_acquisition(camera, &error);
     if (handleerror(error)){
         return 1;
     }
+
 
     gint x(0), y(0), height(0), width(0);
     arv_buffer_get_image_region(popedBuffer, &x, &y, &width, &height);
@@ -122,6 +136,10 @@ int main(int, char **) {
 
 
     cv::Mat imageRaw ((int) height,(int) width, CV_8UC1);
+    if (!imageRaw.isContinuous()){
+        std::cout << "imageRaw is not continuous" << std::endl;
+        return 1;
+    }
     size_t imageSize = 0;
     auto rawPtr = arv_buffer_get_data(popedBuffer, &imageSize);
     memcpy(imageRaw.data, rawPtr, imageSize);
@@ -141,4 +159,6 @@ int main(int, char **) {
     if (stream){
         g_object_unref(stream);
     }
+
+    
 }
